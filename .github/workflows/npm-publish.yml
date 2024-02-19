@@ -1,0 +1,44 @@
+name: Publish package to GitHub Packages
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # Clone source code
+      - uses: actions/checkout@v4
+      # View github context variables
+      - name: 'test github context info'
+        run: echo ${{github.ref}}
+          echo ${{github.ref_name}}
+          echo ${{github.sha}}
+      # Search for the package.json file and complete version replacement
+      - name: Find and Replace One Step
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          find: '{{tag}}'
+          replace: ${{github.ref_name}}
+          include: 'package.json'
+      # Search for the package.json file and complete the removal of the v character
+      - name: Find and Replace Two Step
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          find: 'v(\d+\.\d+\.\d+)'
+          replace: '$1'
+          include: 'package.json'
+      - run: cat package.json
+      # Setup .npmrc file to publish to GitHub Packages
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@byte-sculpt'
+      - run: npm install
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
